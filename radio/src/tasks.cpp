@@ -137,6 +137,19 @@ void execMixerFrequentActions()
   }
 }
 
+typedef struct timing_s {
+  uint32_t start;
+  uint32_t a;
+  uint32_t b;
+  uint32_t c;
+  uint32_t d;
+  uint32_t e;
+  uint32_t f;
+  uint32_t end;
+} timing_t;
+
+timing_t timing;
+
 TASK_FUNCTION(mixerTask)
 {
   s_pulses_paused = true;
@@ -157,6 +170,8 @@ TASK_FUNCTION(mixerTask)
         break;
       }
     }
+
+    timing.start = ticksNow();
 
 #if defined(DEBUG_MIXER_SCHEDULER)
     GPIO_SetBits(EXTMODULE_TX_GPIO, EXTMODULE_TX_GPIO_PIN);
@@ -179,17 +194,27 @@ TASK_FUNCTION(mixerTask)
     if (!s_pulses_paused) {
       uint16_t t0 = getTmr2MHz();
 
+      timing.a = ticksNow();
       DEBUG_TIMER_START(debugTimerMixer);
       RTOS_LOCK_MUTEX(mixerMutex);
+      timing.b = ticksNow();
 
       doMixerCalculations();
+
+      // const uint32_t MAXMIXERCALCDURATION_IN_CPUTICKS = 250*168;
+      // while(ticksNow() < (uint32_t)(timing.start+MAXMIXERCALCDURATION_IN_CPUTICKS)) {} // block until worst case delta from start is reached
+
+      timing.c = ticksNow();
       sendSynchronousPulses((1 << INTERNAL_MODULE) | (1 << EXTERNAL_MODULE));
+      timing.d = ticksNow();
       doMixerPeriodicUpdates();
 
+      timing.e = ticksNow();
       DEBUG_TIMER_START(debugTimerMixerCalcToUsage);
       DEBUG_TIMER_SAMPLE(debugTimerMixerIterval);
       RTOS_UNLOCK_MUTEX(mixerMutex);
       DEBUG_TIMER_STOP(debugTimerMixer);
+      timing.f = ticksNow();
 
 #if defined(STM32) && !defined(SIMU)
       if (getSelectedUsbMode() == USB_JOYSTICK_MODE) {
@@ -206,6 +231,10 @@ TASK_FUNCTION(mixerTask)
       if (t0 > maxMixerDuration)
         maxMixerDuration = t0;
     }
+
+    timing.end = ticksNow();
+
+    // XTRACE("%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n", timing.start, timing.a, timing.b, timing.c, timing.d, timing.e, timing.f, timing.end);
   }
 }
 

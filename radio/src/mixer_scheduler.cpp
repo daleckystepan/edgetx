@@ -69,7 +69,7 @@ void mixerSchedulerSetPeriod(uint8_t moduleIdx, uint16_t periodUs)
     periodUs = MAX_REFRESH_RATE;
   }
 
-  mixerSchedules[moduleIdx].period = periodUs;
+  mixerSchedules[moduleIdx].period = MIN_REFRESH_RATE;
 }
 
 bool mixerSchedulerWaitForTrigger(uint8_t timeoutMs)

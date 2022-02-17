@@ -438,14 +438,25 @@ getvalue_t getValue(mixsrc_t i)
   else return 0;
 }
 
+#include <math.h>
+#include "hal/adc_driver.h"
+
 void evalInputs(uint8_t mode)
 {
   BeepANACenter anaCenter = 0;
 
+  XTRACE("%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n",
+          ticksNow(),
+            getAnalogValue(STICK1), getAnalogValue(STICK2), getAnalogValue(STICK3), getAnalogValue(STICK4),
+            getAnalogValue(POT1), getAnalogValue(POT2), getAnalogValue(POT3),
+            getAnalogValue(SLIDER1), getAnalogValue(SLIDER2)
+        );
+
   for (uint8_t i = 0; i < NUM_STICKS + NUM_POTS + NUM_SLIDERS; i++) {
+
     // normalization [0..2048] -> [-1024..1024]
     uint8_t ch = (i < NUM_STICKS ? CONVERT_MODE(i) : i);
-    int16_t v = anaIn(i);
+    int16_t v = getAnalogValue(i);
 
     if (IS_POT_MULTIPOS(i)) {
       v -= RESX;
@@ -453,8 +464,9 @@ void evalInputs(uint8_t mode)
 #if !defined(SIMU)
     else {
       CalibData * calib = &g_eeGeneral.calib[i];
-      v -= calib->mid;
-      v = v * (int32_t) RESX / (max((int16_t) 100, (v > 0 ? calib->spanPos : calib->spanNeg)));
+      v -= 2*calib->mid;
+
+      v = lrintf( v * RESX / max(200.0f, (v > 0 ? calib->spanPos : calib->spanNeg)*2.0f) );
     }
 #endif
 
